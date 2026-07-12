@@ -2,56 +2,75 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // ---------- GET POSTS ----------
-    if (url.pathname === "/api/posts") {
-      const data = await env.BLOG.get("posts");
+    if (url.pathname === "/api/posts" && request.method === "GET") {
+      const posts = await env.BLOG.get("posts", { type: "json" });
 
-      return new Response(data || "[]", {
+      return Response.json(posts || [], {
         headers: {
-          "content-type": "application/json",
-          "Access-Control-Allow-Origin": "*"
+          "Cache-Control": "no-store"
         }
       });
     }
 
-    // ---------- SAVE ----------
     if (url.pathname === "/api/publish" && request.method === "POST") {
+      try {
+        const form = await request.formData();
 
-      const form = await request.formData();
+        if (form.get("postingKey") !== env.POSTING_KEY) {
+          return new Response("Unauthorized", { status: 401 });
+        }
 
-      if (form.get("postingKey") !== env.POSTING_KEY) {
-        return new Response("Unauthorized", { status: 401 });
+        const date = String(form.get("date") || "").trim();
+        const title = String(form.get("title") || "").trim();
+        const body = String(form.get("body") || "").trim();
+        const place = String(form.get("place") || "").trim();
+        const image = String(form.get("image") || "");
+
+        if (!date || !title || !body) {
+          return new Response("Date, title and note are required.", {
+            status: 400
+          });
+        }
+
+        const currentPosts =
+          (await env.BLOG.get("posts", { type: "json" })) || [];
+
+        const entry = {
+          id: crypto.randomUUID(),
+          date,
+          title,
+          body,
+          place,
+          image: image || null,
+          createdAt: new Date().toISOString()
+        };
+
+        currentPosts.push(entry);
+
+        currentPosts.sort((a, b) => {
+          const dateDifference = b.date.localeCompare(a.date);
+
+          if (dateDifference !== 0) {
+            return dateDifference;
+          }
+
+          return b.createdAt.localeCompare(a.createdAt);
+        });
+
+        await env.BLOG.put("posts", JSON.stringify(currentPosts));
+
+        return Response.json({
+          ok: true,
+          entry
+        });
+      } catch (error) {
+        return new Response(
+          `Publish failed: ${error?.message || "Unknown error"}`,
+          { status: 500 }
+        );
       }
-
-      const entry = {
-        id: crypto.randomUUID(),
-        date: form.get("date"),
-        title: form.get("title"),
-        body: form.get("body"),
-        place: form.get("place"),
-        createdAt: new Date().toISOString()
-      };
-
-      let posts = [];
-
-      const current = await env.BLOG.get("posts");
-
-      if (current) {
-        posts = JSON.parse(current);
-      }
-
-      posts.unshift(entry);
-
-      await env.BLOG.put(
-        "posts",
-        JSON.stringify(posts)
-      );
-
-      return Response.json({
-        ok: true
-      });
     }
 
     return env.ASSETS.fetch(request);
   }
-}
+};
