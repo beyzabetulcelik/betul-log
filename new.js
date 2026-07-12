@@ -1,22 +1,33 @@
 const form = document.getElementById("entry-form");
-const status = document.getElementById("status");
+const statusElement = document.getElementById("status");
 const dateInput = document.getElementById("date");
 
-// Today's date
 dateInput.value = new Date().toISOString().slice(0, 10);
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
 
-  const cfg = window.BETUL_LOG_CONFIG;
+  const config = window.BETUL_LOG_CONFIG;
+  const button = form.querySelector('button[type="submit"]');
+  const photoInput = form.querySelector('input[name="photo"]');
 
-  status.textContent = "Publishing...";
+  button.disabled = true;
+  statusElement.textContent = "Publishing...";
 
   try {
     const formData = new FormData(form);
-    formData.append("postingKey", cfg.postingKey);
 
-    const response = await fetch(cfg.workerUrl, {
+    formData.delete("photo");
+    formData.append("postingKey", config.postingKey);
+
+    const photo = photoInput.files[0];
+
+    if (photo) {
+      const compressedImage = await compressImage(photo);
+      formData.append("image", compressedImage);
+    }
+
+    const response = await fetch(config.workerUrl, {
       method: "POST",
       body: formData
     });
@@ -25,16 +36,48 @@ form.addEventListener("submit", async (e) => {
       throw new Error(await response.text());
     }
 
-    const result = await response.json();
-
-    console.log(result);
-
-    status.textContent = "✅ Published!";
     form.reset();
     dateInput.value = new Date().toISOString().slice(0, 10);
 
-  } catch (err) {
-    console.error(err);
-    status.textContent = "❌ " + err.message;
+    statusElement.textContent = "✅ Published!";
+
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 700);
+  } catch (error) {
+    statusElement.textContent = `❌ ${error.message}`;
+  } finally {
+    button.disabled = false;
   }
 });
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Photo could not be read."));
+
+    reader.onload = () => {
+      image.src = reader.result;
+    };
+
+    image.onerror = () => reject(new Error("Photo could not be loaded."));
+
+    image.onload = () => {
+      const maximumWidth = 1200;
+      const scale = Math.min(1, maximumWidth / image.width);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
