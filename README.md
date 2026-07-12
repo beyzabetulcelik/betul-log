@@ -1,8 +1,1 @@
-name = "betul-log-api"
-main = "src/index.js"
-compatibility_date = "2026-07-12"
-
-[vars]
-GITHUB_OWNER = "YOUR_GITHUB_USERNAME"
-GITHUB_REPO = "betul-log"
-GITHUB_BRANCH = "main"
+export default {async fetch(request,env){const h={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"POST, OPTIONS"};if(request.method==="OPTIONS")return new Response(null,{headers:h});if(request.method!=="POST")return new Response("Method not allowed",{status:405,headers:h});const f=await request.formData();if(f.get("postingKey")!==env.POSTING_KEY)return new Response("Unauthorized",{status:401,headers:h});return Response.json({ok:true},{headers:h});}};

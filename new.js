@@ -1,3 +1,1 @@
-window.BETUL_LOG_CONFIG = {
-  workerUrl: "PASTE_YOUR_CLOUDFLARE_WORKER_URL_HERE"
-};
+window.BETUL_LOG_CONFIG = { workerUrl: "", postingKey: "" };
