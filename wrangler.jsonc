@@ -1,10 +1,14 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "betul-log",
-  "main": "worker.js",
   "compatibility_date": "2026-07-12",
+  "observability": {
+    "enabled": true
+  },
   "assets": {
-    "directory": ".",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
-  }
+    "directory": "."
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
 }
